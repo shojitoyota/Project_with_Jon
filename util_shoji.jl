@@ -327,3 +327,51 @@ function simulate_pf_selforg(
     log_likelihood = sum(l) - T * log(pf.n_particle)
     return x, θ_particles, log_likelihood
 end
+
+
+# -----------------------------
+# SOR solver
+# -----------------------------
+function SOR(A, f; omega=1.8, tol=1e-10, max_iter=100000)
+
+    n = length(f)
+    u = zeros(n)
+
+    for k in 1:max_iter
+
+        error = 0.0
+
+        for i in 1:n
+
+            old = u[i]
+
+            # Ax=f
+            sigma = 0.0
+
+            if i > 1
+                sigma += A[i,i-1] * u[i-1]
+            end
+
+            if i < n
+                sigma += A[i,i+1] * u[i+1]
+            end
+
+            u_gs = (f[i] - sigma) / A[i,i]
+
+            u[i] = (1-omega)*old + omega*u_gs
+
+            error = max(error, abs(u[i]-old))
+
+        end
+
+        if error < tol
+            println("SOR converged: iteration = ", k)
+            break
+        end
+
+        
+
+    end
+
+    return u
+end
