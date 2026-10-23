@@ -1,5 +1,13 @@
+#function rbf_kernel(x1, x2; ℓ=1.0, σf=1.0)
+#    σf^2 * exp(-(x1 - x2)^2 / (2ℓ^2))
+#end
+
 function rbf_kernel(x1, x2; ℓ=1.0, σf=1.0)
-    σf^2 * exp(-(x1 - x2)^2 / (2ℓ^2))
+
+    r2 = sum((x1-x2).^2)
+
+    return σf^2 * exp(-r2/(2ℓ^2))
+
 end
 
 function rbf_kernel_simple(x1, x2; ℓ=1.0)
@@ -12,6 +20,74 @@ end
 
 function kernel_matrix_simple(X1, X2; ℓ=1.0)
     [rbf_kernel_simple(x1, x2; ℓ=1.0) for x1 in X1, x2 in X2]
+end
+
+using SpecialFunctions
+
+function matern_kernel(x1, x2; ν=5/2, ℓ=1.0, σf=1.0)
+    r = sqrt(sum((x1 - x2).^2))
+
+    # r = 0 の場合（BesselKの発散を避ける）
+    if r == 0
+        return σf^2
+    end
+
+    z = sqrt(2ν) * r / ℓ
+
+    if ν == 1/2
+        return σf^2 * exp(-z)
+
+    elseif ν == 3/2
+        return σf^2 * (1 + z) * exp(-z)
+
+    elseif ν == 5/2
+        return σf^2 * (1 + z + z^2/3) * exp(-z)
+
+    else
+        return σf^2 *
+               (2^(1-ν) / gamma(ν)) *
+               z^ν *
+               besselk(ν, z)
+    end
+end
+
+function kernel_matrix_matern(X1, X2; ν=5/2, ℓ=1.0, σf=1.0)
+    [matern_kernel(x1, x2; ν=ν, ℓ=ℓ, σf=σf) for x1 in X1, x2 in X2]
+end
+
+function kernel_korobov(X1,X2; alpha,M)
+
+    val = 1.0
+
+    for j in 1:M
+
+        val += j^(-2alpha) *
+        (
+        cos(2π*j*X1)*cos(2π*j*X2)
+        +
+        sin(2π*j*X1)*sin(2π*j*X2)
+        )
+
+    end
+
+    return val
+
+end
+
+function kernel_matrix_korobov(X1, X2; alpha=2.0, M=50)
+    [kernel_korobov(x1, x2; alpha=alpha, M=M) for x1 in X1, x2 in X2]
+end
+
+function kernel_matrix_matern(X1, X2; ν=5/2, ℓ=1.0, σf=1.0)
+
+    [
+        matern_kernel(x1, x2;
+                      ν=ν,
+                      ℓ=ℓ,
+                      σf=σf)
+        for x1 in X1, x2 in X2
+    ]
+
 end
 
 
